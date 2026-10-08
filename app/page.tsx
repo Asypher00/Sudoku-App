@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BarChart3, ChevronRight, Clock3, Eraser, Home, Lightbulb, MoreHorizontal, Pause, PenLine, RotateCcw, Settings, Sparkles, Trophy } from 'lucide-react';
 import { SessionBusy } from '../src/session';
 import { useContext, useRef } from 'react';
+import { flyNumber } from '../src/lib/numberFlight';
 import { applyNumber, emptyNotes, flushPlaySaves, localDay, playRequest, queueSave, streaks, type Level, type PlayGame } from '../src/lib/play';
 
 const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2,'0')}:${(seconds % 60).toString().padStart(2,'0')}`;
@@ -24,6 +25,13 @@ export default function HomePage() {
   const [saveStatus, setSaveStatus] = useState('Saved to your account');
   const dirty = useRef(false);
   const currentGame = useRef(game);
+  const boardElement = useRef<HTMLDivElement>(null);
+  const stopFlight = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopFlight.current?.(), []);
+  useEffect(() => {
+    stopFlight.current?.();
+    stopFlight.current = null;
+  }, [game?.id, paused, showNewGame, sessionBusy]);
   currentGame.current = game;
   const puzzle = game?.puzzle || [], solution = game?.solution || [], board = game?.board || [];
   const difficulty = game?.difficulty || 'medium';
@@ -78,7 +86,7 @@ export default function HomePage() {
   const filled = board.flat().filter(Boolean).length;
   const progress = useMemo(() => Math.round((filled / 81) * 100), [filled]);
 
-  function enterNumber(value: number) {
+  function enterNumber(value: number, source?: HTMLButtonElement) {
     const active = currentGame.current;
     if (blocked || !active || active.mistakes >= 3 || active.completed) return;
     const [row, col] = selected;
@@ -87,6 +95,11 @@ export default function HomePage() {
     update(next);
     if (notesMode) return setNotice(board[row][col] ? 'Erase the answer before adding notes.' : 'Note updated — notes do not count as answers or mistakes.');
     if (value !== solution[row][col]) return setNotice(`${value} is not the correct answer for this cell.`);
+    const target = boardElement.current?.children[row * 9 + col];
+    if (source && target instanceof HTMLElement && active.board[row][col] !== value) {
+      stopFlight.current?.();
+      stopFlight.current = flyNumber(source, target, value);
+    }
     setNotice('Great move — everything checks out.');
   }
 
@@ -162,21 +175,21 @@ export default function HomePage() {
           <div className="progress-track"><span style={{width: `${progress}%`}}/></div>
           <div className="game-card">
             <div className="board-wrap">
-              <div className="sudoku-board" role="grid" aria-label="9 by 9 Sudoku board">
+              <div ref={boardElement} className="sudoku-board" role="grid" aria-label="9 by 9 Sudoku board">
                 {board.map((row,r) => row.map((value,c) => {
                   const [activeRow, activeCol] = selected;
                   const sameBox = Math.floor(r/3) === Math.floor(activeRow/3) && Math.floor(c/3) === Math.floor(activeCol/3);
                   const related = r === activeRow || c === activeCol || sameBox;
                   const sameNumber = value !== 0 && value === selectedValue;
                   const isSelected = r === activeRow && c === activeCol;
-                  return <button key={`${r}-${c}`} className={`cell ${related?'related':''} ${sameNumber?'same-number':''} ${isSelected?'selected':''} ${puzzle[r][c]?'given':''}`} disabled={blocked} onClick={() => setSelected([r,c])} role="gridcell" aria-label={`Row ${r+1}, Column ${c+1}, ${value || 'empty'}`}>{value || <span className="cell-notes" aria-label={`Notes: ${game?.notes[r][c].join(', ') || 'none'}`}>{[1,2,3,4,5,6,7,8,9].map((number) => <span key={number}>{game?.notes[r][c].includes(number) ? number : ''}</span>)}</span>}</button>;
+                  return <button key={`${r}-${c}`} className={`cell ${related?'related':''} ${sameNumber?'same-number':''} ${isSelected?'selected':''} ${puzzle[r][c]?'given':''}`} disabled={blocked} onClick={() => setSelected([r,c])} role="gridcell" aria-label={`Row ${r+1}, Column ${c+1}, ${value || 'empty'}`}>{value ? <span className="cell-value">{value}</span> : <span className="cell-notes" aria-label={`Notes: ${game?.notes[r][c].join(', ') || 'none'}`}>{[1,2,3,4,5,6,7,8,9].map((number) => <span key={number}>{game?.notes[r][c].includes(number) ? number : ''}</span>)}</span>}</button>;
                 }))}
               </div>
               {paused && <div className="pause-cover"><Pause size={28}/><h2>Game paused</h2><p>Your board and timer are safe.</p><button onClick={() => setPaused(false)}>Continue game</button></div>}
             </div>
             <div className="control-panel">
               <div className="status-row"><span><i className="status-dot"/> {saveStatus}</span><span className={mistakes ? 'mistake-count has-mistakes':'mistake-count'}>{mistakes} / 3 mistakes</span></div>
-              <div className="number-pad" aria-label="Number pad">{[1,2,3,4,5,6,7,8,9].map((number) => <button key={number} disabled={blocked} onClick={() => enterNumber(number)} aria-label={`Enter ${number}`}>{number}</button>)}</div>
+              <div className="number-pad" aria-label="Number pad">{[1,2,3,4,5,6,7,8,9].map((number) => <button key={number} disabled={blocked} onClick={(event) => enterNumber(number, event.currentTarget)} aria-label={`Enter ${number}`}>{number}</button>)}</div>
               <div className="tool-row"><button disabled={blocked} onClick={clearCell}><Eraser size={19}/><span>Erase</span></button><button disabled={blocked} aria-pressed={notesMode} onClick={() => setNotesMode((value) => !value)} className={notesMode?'tool-active':''}><PenLine size={19}/><span>Notes {notesMode?'on':''}</span></button><button disabled={blocked} onClick={hint}><Lightbulb size={19}/><span>Hint</span><small>{3-hintsUsed}</small></button></div>
               <button className="pause-button" disabled={blocked} onClick={() => setPaused(true)}><Pause size={17}/> Pause game</button><p className="keyboard-tip"><kbd>1–9</kbd> to enter <span>·</span> <kbd>⌫</kbd> to erase</p>
             </div>
