@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "react", "import", "jsx-a11y"],
+  "categories": { "correctness": "error" },
+  "env": { "builtin": true, "browser": true, "node": true },
+  "options": { "typeAware": false, "typeCheck": false },
+  "ignorePatterns": ["dist/**", "node_modules/**"],
+  "rules": {
+    "no-var": "error",
+    "prefer-const": "error",
+    "react/rules-of-hooks": "error",
+    "react/react-compiler": "off",
+    "jsx-a11y/prefer-tag-over-role": "off"
+  }
+}

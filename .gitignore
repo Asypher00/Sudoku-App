@@ -1,0 +1,51 @@
+# Dependencies and package-manager caches
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/versions/
+.npm/
+.pnpm-store/
+
+# Build output, tool caches, and test results
+dist/
+build/
+out/
+.vite/
+.next/
+.vinext/
+.cache/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Local environment and credentials (keep shareable templates)
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+.aws/
+
+# Logs
+*.log
+
+# Local deployment and generated artifacts
+.vercel/
+.wrangler/
+.openai/
+/outputs/
+/work/
+next-env.d.ts
+
+# OS and editor artifacts
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
